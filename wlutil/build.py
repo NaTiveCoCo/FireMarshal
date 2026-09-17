@@ -358,6 +358,9 @@ def buildWorkload(cfgName, cfgs, buildBin=True, buildImg=True):
             binList.append(wlutil.noDiskPath(config['bin']))
         else:
             binList.append(config['bin'])
+        # post-bin 是 binary 的完成步骤；binOnly 也必须执行，不依赖 rootfs 编辑。
+        if 'post-bin' in config:
+            binList.append(str(config['post-bin']))
 
     if 'img' in config and buildImg and not config['img-hardcoded']:
         imgList.append(config['img'])
@@ -368,6 +371,8 @@ def buildWorkload(cfgName, cfgs, buildBin=True, buildImg=True):
                 binList.append(jCfg['bin'])
                 if jCfg['nodisk']:
                     binList.append(wlutil.noDiskPath(jCfg['bin']))
+                if 'post-bin' in jCfg:
+                    binList.append(str(jCfg['post-bin']))
 
             if 'img' in jCfg and buildImg and not jCfg['img-hardcoded']:
                 imgList.append(jCfg['img'])
