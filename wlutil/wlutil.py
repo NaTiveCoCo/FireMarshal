@@ -571,14 +571,21 @@ def waitpid(pid):
 
 sudoCmd = ["/usr/bin/sudo"]
 pwdlessSudoCmd = []  # set if pwdless sudo is enabled
+# host 可显式关闭所有 sudo 路径，使用已有的 guestmount 与用户态 cpio。
+useSudo = os.environ.get('FIREMARSHAL_USE_SUDO', '1')
+if useSudo not in ('0', '1'):
+    raise ValueError('FIREMARSHAL_USE_SUDO must be 0 or 1')
 
 
 def runnableWithSudo(cmd):
     global sudoCmd
+    if useSudo == '0':
+        return False
     return sp.run(sudoCmd + ['-ln', cmd], stderr=sp.DEVNULL, stdout=sp.DEVNULL).returncode == 0
 
 
-if runnableWithSudo('true'):
+# sudo -l 只查询授权，不能证明无需密码；使用无副作用的实际执行进行探测。
+if useSudo == '1' and sp.run(sudoCmd + ['-n', 'true'], stderr=sp.DEVNULL, stdout=sp.DEVNULL).returncode == 0:
     # User has passwordless sudo available
     pwdlessSudoCmd = sudoCmd
 
@@ -656,6 +663,7 @@ def toCpio(src, dst):
             p = sp.run(pwdlessSudoCmd + ["sh", "-c", "find -print0 | cpio --owner root:root --null -ov --format=newc"],
                        stderr=sp.PIPE, stdout=outCpio, cwd=src)
             log.debug(p.stderr.decode('utf-8'))
+            p.check_returncode()
 
 
 def resizeFS(img, newSize=0):
